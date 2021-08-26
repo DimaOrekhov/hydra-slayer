@@ -6,7 +6,7 @@ from hydra_slayer.factory import call_meta_factory
 from hydra_slayer.registry import Registry
 from hydra_slayer.search_path import SearchPath
 
-from .foo import foo
+from .foo import foo, bar
 from . import foo as module
 
 
@@ -114,28 +114,24 @@ def test_instantiate_relative_import_with_search_path_provided():
     """@TODO: Docs. Contribution is welcome."""
     r = Registry()
 
-    res = r.get_instance(
-        "foo", search_path=SearchPath.from_description(["tests.foo.foo"]), a=1, b=2
-    )()
-    assert res == {"a": 1, "b": 2}
+    def _find_and_call_factory_test(factory_path, search_path_description, expected_factory, **factory_kwargs):
+        res = r.get_instance(
+            name=factory_path,
+            meta_factory=None,
+            search_path=SearchPath.from_description(search_path_description),
+            **factory_kwargs
+        )
+        assert res() == expected_factory(**factory_kwargs)
 
-    res = r.get_instance(
-        "foo.foo", search_path=SearchPath.from_description(["tests.foo"]), a=3, b=4
-    )()
-    assert res == {"a": 3, "b": 4}
+    _find_and_call_factory_test("foo", ["tests.foo.foo"], foo, a=1, b=2)
 
-    res = r.get_instance("foo.bar", search_path=SearchPath.from_description(["tests.foo"]))()
-    assert res is None
+    _find_and_call_factory_test("foo.foo", ["tests.foo"], foo, a=3, b=4)
 
-    res = r.get_instance(
-        "buzz", search_path=SearchPath.from_description([("tests.foo.foo", "buzz")]), a=10, b=20
-    )()
-    assert res == {"a": 10, "b": 20}
+    _find_and_call_factory_test("buzz", [("tests.foo.foo", "buzz")], foo, a=10, b=20)
 
-    res = r.get_instance(
-        "buzz.foo", search_path=SearchPath.from_description([("tests.foo", "buzz")]), a=100, b=200
-    )()
-    assert res == {"a": 100, "b": 200}
+    _find_and_call_factory_test("fizz.foo", [("tests.foo", "fizz")], foo, a=100, b=200)
+
+    _find_and_call_factory_test("foo.bar", ["tests.foo"], bar)
 
 
 def test_from_config():
